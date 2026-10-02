@@ -1,74 +1,80 @@
 # Tower of Hanoi Visualizer
 
+**Live demo:** https://tower-of-hanoi-visualizer-seven.vercel.app/
+
 A Data Structures and Algorithms mini-project: an animated Tower of Hanoi solver.
-The front end is HTML5, CSS3 and vanilla JavaScript. The back end is written in **C**: recursion generates the moves, and stacks validate them.
+The front end is HTML5, CSS3 and vanilla JavaScript. The solver is written in **C**: recursion generates the moves, and stacks validate them.
 
 ## Features
 
-- Choose 3 to 8 disks, with Slow, Medium and Fast animation speeds
-- Start simulation and Reset buttons (controls are disabled while a run is in progress)
-- Move counter compared with the optimal 2^n − 1, plus a progress bar
-- Live stack contents shown under each peg
-- Completion pop-up showing the total moves
-- Collapsible time and space complexity explanation
+* Choose 3 to 8 disks, with Slow, Medium and Fast animation speeds
+* Start simulation and Reset buttons (controls are disabled while a run is in progress)
+* Move counter compared with the optimal 2^n − 1, plus a progress bar
+* Live stack contents shown under each peg
+* Completion pop-up showing the total moves
+* Collapsible time and space complexity explanation
 
 ## How it works
 
-1. The browser requests `GET /api/solve?disks=N` from the C server.
-2. The server runs the recursive solver `hanoi(k, from, to, aux)`, which records every move in order.
-3. The server replays those moves on three array-based stacks (`push` and `pop`) to confirm every move is legal and all disks end on peg C. It then returns the moves as JSON.
-4. The browser animates each move: pop the disk from the source stack, lift it, slide it across, drop it, and push it onto the target stack.
+1. The C solver runs the recursive function `hanoi(k, from, to, aux)`, which records every move in order.
+2. It replays those moves on three array-based stacks (`push` and `pop`) to confirm every move is legal and all disks end on peg C.
+3. The browser animates each move: pop the disk from the source stack, lift it, slide it across, drop it, and push it onto the target stack.
 
-Example response for 3 disks (shortened):
+The same C logic can be run in two ways:
 
-```json
-{"disks":3,"optimal":7,"moves":[{"disk":1,"from":0,"to":2},{"disk":2,"from":0,"to":1}, ...]}
-```
+|Version|Where the C code runs|Files|
+|-|-|-|
+|**Online (Vercel)**|In the browser, compiled to WebAssembly|`index.html`, `hanoi\\\\\\\_wasm.c`, `hanoi.js`, `hanoi.wasm`|
+|**Local server**|As a small C HTTP server on your machine|`server.c`, `tower-of-hanoi.html`|
 
-## Project structure
+## Run the online version locally
 
-| File | Purpose |
-|------|---------|
-| `server.c` | C back end: stack ADT, recursive solver, move validation, small HTTP server |
-| `tower-of-hanoi.html` | Front end: interface, animation and controls (HTML, CSS, JavaScript in one file) |
-
-## Run it
-
-You need a C compiler. On Windows, one option is MinGW-w64 via WinLibs:
+The WebAssembly files must be served over HTTP (opening `index.html` directly won't work):
 
 ```
-winget install BrechtSanders.WinLibs.POSIX.UCRT
+python -m http.server 8000
 ```
 
-Open a terminal in the project folder, then:
+Then open **http://localhost:8000**.
+
+To rebuild the WebAssembly files after changing `hanoi\\\\\\\_wasm.c` (needs [Emscripten](https://emscripten.org)):
+
+```
+emcc hanoi\\\\\\\_wasm.c -O2 --no-entry -o hanoi.js -sMODULARIZE=1 -sEXPORT\\\\\\\_NAME=createHanoi -sEXPORTED\\\\\\\_FUNCTIONS=\\\\\\\_solve,\\\\\\\_move\\\\\\\_disk,\\\\\\\_move\\\\\\\_from,\\\\\\\_move\\\\\\\_to -sEXPORTED\\\\\\\_RUNTIME\\\\\\\_METHODS=cwrap
+```
+
+## Run the local C server version
+
+You need a C compiler (for example MinGW-w64 on Windows). In the project folder:
 
 **Windows**
+
 ```
-gcc -O2 -Wall server.c -o hanoi_server -lws2_32
-hanoi_server
+gcc -O2 -Wall server.c -o hanoi\\\\\\\_server -lws2\\\\\\\_32
+hanoi\\\\\\\_server
 ```
 
 **Linux / macOS**
+
 ```
-gcc -O2 -Wall server.c -o hanoi_server
-./hanoi_server
+gcc -O2 -Wall server.c -o hanoi\\\\\\\_server
+./hanoi\\\\\\\_server
 ```
 
-Open **http://localhost:8080** in your browser. Keep the terminal window open while you use the page.
-
-> The C server has to be running for the visualizer to work, so this project can't be hosted on GitHub Pages (which only serves static files).
+Open **http://localhost:8080** and keep the terminal open while you use the page.
 
 ## Complexity
 
-- **Time: O(2^n).** The recurrence T(n) = 2·T(n−1) + 1 gives exactly 2^n − 1 moves, and no solution can use fewer.
-- **Space: O(n).** The recursion is n calls deep, and the three stacks together never hold more than n disks.
+* **Time: O(2^n).** The recurrence T(n) = 2·T(n−1) + 1 gives exactly 2^n − 1 moves, and no solution can use fewer.
+* **Space: O(n).** The recursion is n calls deep, and the three stacks together never hold more than n disks.
 
-| Disks | Moves (2^n − 1) |
-|-------|-----------------|
-| 3 | 7 |
-| 5 | 31 |
-| 8 | 255 |
+|Disks|Moves (2^n − 1)|
+|-|-|
+|3|7|
+|5|31|
+|8|255|
 
 ## Built with
 
-C (sockets), HTML5, CSS3, JavaScript
+C (stack ADT, recursion, sockets), WebAssembly (Emscripten), HTML5, CSS3, JavaScript, Vercel
+
