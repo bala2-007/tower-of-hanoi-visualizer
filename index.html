@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tower of Hanoi Visualizer</title>
+<style>
+:root{--bg:#e9e8e5;--card:#fbfaf8;--ink:#2a2826;--mute:#6d6a65;--line:#dedbd5;--accent:#35506e;--wood-a:#a8703f;--wood-b:#6f4421;--base:16px}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;padding:32px 16px 48px;background:linear-gradient(#f2f1ee,var(--bg));color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:920px;margin:0 auto}
+h1{margin:0;text-align:center;font-size:clamp(1.8rem,4.5vw,2.6rem);font-weight:800;letter-spacing:-.03em}
+.sub{margin:6px auto 26px;text-align:center;color:var(--mute);max-width:56ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:0 4px 18px rgba(70,50,30,.06)}
+.controls{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
+label{display:flex;flex-direction:column;gap:6px;font-size:.85rem;font-weight:600;color:var(--mute)}
+select{font:inherit;color:var(--ink);padding:9px 12px;min-width:140px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.btns{display:flex;gap:10px;margin-left:auto}
+button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:10px 20px;cursor:pointer;transition:background .15s,transform .1s}
+button:active:not(:disabled){transform:scale(.97)}
+.primary{background:var(--accent);color:#fff}.primary:hover:not(:disabled){background:#2a4059}
+.ghost{background:#ebe9e4;color:var(--ink)}.ghost:hover{background:#e0ddd6}
+button:disabled,select:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:3px solid #7aa2d4;outline-offset:2px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center}
+.stat b{display:block;font-size:1.7rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat span{font-size:.85rem;color:var(--mute)}
+.bar{height:6px;margin-top:14px;border-radius:99px;background:#e9e7e2;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#06d6a0,#118ab2);transition:width .25s}
+.status{min-height:1.5em;margin:0 0 6px;text-align:center;color:var(--mute)}
+.arena{position:relative;height:330px;display:grid;grid-template-columns:repeat(3,1fr);overflow:hidden}
+.tower{position:relative}
+.base{position:absolute;left:3%;right:3%;bottom:0;height:var(--base);border-radius:8px;background:linear-gradient(var(--wood-a),var(--wood-b));box-shadow:0 3px 6px rgba(0,0,0,.25)}
+.rod{position:absolute;left:50%;bottom:var(--base);width:14px;height:240px;transform:translateX(-50%);border-radius:7px 7px 0 0;background:linear-gradient(90deg,#86542a,#bb8556 50%,#86542a)}
+.disk{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;border-radius:9px;color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.4);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.15),0 2px 4px rgba(0,0,0,.22);transition:left var(--t,300ms) ease-in-out,bottom var(--t,300ms) ease-in-out}
+.instant .disk{transition:none}
+.labels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;text-align:center;font-size:.9rem}
+.labels b{display:block}
+.labels code{font-size:.8rem;color:var(--mute);word-break:break-word}
+details summary{cursor:pointer;font-weight:700}
+details[open] summary{margin-bottom:10px}
+details p,details li{color:#4a4743;margin:6px 0}
+details ul{padding-left:20px;margin:6px 0}
+dialog{border:0;border-radius:16px;padding:28px 32px;max-width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(30,25,20,.55)}
+dialog h2{margin:0 0 8px}
+dialog .btns{justify-content:center;margin:18px 0 0}
+@media(max-width:520px){.btns{margin-left:0;width:100%}.btns button{flex:1}select{min-width:0;width:100%}label{flex:1}.arena{height:310px}}
+@media(prefers-reduced-motion:reduce){.disk{transition-duration:60ms!important}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Tower of Hanoi</h1>
+  <p class="sub">Watch recursion solve the puzzle: every move is a pop from one stack and a push onto another.</p>
+
+  <section class="card controls" aria-label="Controls">
+    <label>Number of disks
+      <select id="count"></select>
+    </label>
+    <label>Animation speed
+      <select id="speed">
+        <option value="slow">Slow</option>
+        <option value="medium" selected>Medium</option>
+        <option value="fast">Fast</option>
+      </select>
+    </label>
+    <div class="btns">
+      <button class="primary" id="start">Start simulation</button>
+      <button class="ghost" id="reset">Reset</button>
+    </div>
+  </section>
+
+  <section class="card" aria-label="Move counter">
+    <div class="stats">
+      <div class="stat"><b id="moves">0</b><span>Moves made</span></div>
+      <div class="stat"><b id="optimal">7</b><span>Optimal moves</span></div>
+      <div class="stat"><b id="formula">2<sup>3</sup> − 1</b><span>Formula</span></div>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+  </section>
+
+  <section class="card">
+    <p class="status" id="status" aria-live="polite"></p>
+    <div class="arena" id="arena">
+      <div class="tower"><div class="rod"></div><div class="base"></div></div>
+      <div class="tower"><div class="rod"></div><div class="base"></div></div>
+      <div class="tower"><div class="rod"></div><div class="base"></div></div>
+    </div>
+    <div class="labels">
+      <div><b>Peg A (source)</b><code id="s0"></code></div>
+      <div><b>Peg B (auxiliary)</b><code id="s1"></code></div>
+      <div><b>Peg C (target)</b><code id="s2"></code></div>
+    </div>
+  </section>
+
+  <details class="card">
+    <summary>Time and space complexity</summary>
+    <p><b>Recurrence:</b> to move n disks, move n−1 disks aside, move the largest disk, then move n−1 disks back on top. So T(n) = 2·T(n−1) + 1, with T(1) = 1.</p>
+    <p><b>Time: O(2<sup>n</sup>).</b> Solving the recurrence gives exactly 2<sup>n</sup> − 1 moves, and no solution can use fewer. Each extra disk doubles the work: 3 disks take 7 moves, 8 disks take 255.</p>
+    <p><b>Space: O(n).</b> The recursion goes n calls deep, so the call stack holds at most n frames. The three peg stacks together never hold more than n disks.</p>
+    <ul>
+      <li>Paradigm: divide and conquer, with the problem shrinking from n to n−1 each call.</li>
+      <li>Data structure: each peg is a stack, because only the top disk can move (LIFO).</li>
+    </ul>
+  </details>
+</main>
+
+<dialog id="done">
+  <h2>Puzzle solved!</h2>
+  <p id="doneMsg"></p>
+  <div class="btns">
+    <button class="ghost" id="close">Close</button>
+    <button class="primary" id="again">Play again</button>
+  </div>
+</dialog>
+
+<script src="hanoi.js"></script>
+<script>
+const COLORS = ['#ef476f','#f78c4b','#f2b82e','#06b88a','#118ab2','#6c5ce7','#c14fb0','#2d3e50'];
+const SPEEDS = { slow: 650, medium: 320, fast: 110 };   // ms per animation phase
+const $ = id => document.getElementById(id);
+const arena = $('arena'), countSel = $('count');
+const BASE = 16, ROD = 240, LIFT = BASE + ROD + 12;
+let DH = innerWidth < 520 ? 22 : 26;                      // height of one disk slot
+
+let towers = [[], [], []];   // three stacks: index 0 = A, 1 = B, 2 = C (top of stack = last element)
+let n = 4, moveCount = 0, running = false, runId = 0;
+const disks = {};
+
+/* ---------- Back end: C solver compiled to WebAssembly (hanoi.js + hanoi.wasm) ---------- */
+let hanoiC;
+async function fetchMoves(k) {
+  if (!hanoiC) hanoiC = await createHanoi();                 // loads the compiled C code
+  const solve = hanoiC.cwrap('solve', 'number', ['number']);
+  const disk = hanoiC.cwrap('move_disk', 'number', ['number']);
+  const from = hanoiC.cwrap('move_from', 'number', ['number']);
+  const to   = hanoiC.cwrap('move_to', 'number', ['number']);
+  const count = solve(k);                                    // C: recursion + stack validation
+  if (count < 0) throw new Error('C solver failed');
+  return Array.from({ length: count }, (_, i) => ({ disk: disk(i), from: from(i), to: to(i) }));
+}
+
+/* ---------- Rendering ---------- */
+const diskWidth = k => {
+  const max = arena.clientWidth / 3 * 0.92, min = Math.min(44, max * 0.35);
+  return min + (max - min) * (k - 1) / (n - 1);
+};
+function place(k, peg, y) {
+  const el = disks[k], w = diskWidth(k);
+  el.style.width = w + 'px';
+  el.style.height = (DH - 2) + 'px';
+  el.style.left = (arena.clientWidth / 3 * (peg + 0.5) - w / 2) + 'px';
+  el.style.bottom = y + 'px';
+}
+function layout() {
+  towers.forEach((stack, peg) => stack.forEach((k, level) => place(k, peg, BASE + level * DH)));
+}
+function instantLayout() {
+  arena.classList.add('instant'); layout(); arena.offsetWidth; arena.classList.remove('instant');
+}
+function updateStats() {
+  const opt = 2 ** n - 1;
+  $('moves').textContent = moveCount;
+  $('optimal').textContent = opt;
+  $('formula').innerHTML = `2<sup>${n}</sup> − 1`;
+  $('bar').style.width = (moveCount / opt * 100) + '%';
+  towers.forEach((s, i) => $('s' + i).textContent = '[' + s.join(', ') + ']');
+}
+function setUI() {
+  countSel.disabled = running;
+  $('start').disabled = running;
+}
+
+/* ---------- State ---------- */
+function init() {
+  n = +countSel.value;
+  towers = [Array.from({ length: n }, (_, i) => n - i), [], []];   // [n, ..., 2, 1]: largest at the bottom
+  moveCount = 0;
+  arena.querySelectorAll('.disk').forEach(d => d.remove());
+  for (let k = 1; k <= n; k++) {
+    const d = document.createElement('div');
+    d.className = 'disk'; d.textContent = k; d.style.background = COLORS[k - 1];
+    arena.appendChild(d); disks[k] = d;
+  }
+  instantLayout();
+  $('status').textContent = 'Choose the number of disks and press Start.';
+  updateStats();
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const NAMES = ['A', 'B', 'C'];
+
+// Plays one move: pop from the source stack, animate lift → slide → drop, push onto the target stack.
+async function play(m, id) {
+  const t = SPEEDS[$('speed').value];
+  arena.style.setProperty('--t', t + 'ms');
+  const k = towers[m.from].pop();                                   // POP
+  if (k !== m.disk) throw new Error('Stack mismatch');
+  const top = towers[m.to][towers[m.to].length - 1];                // peek
+  if (top < k) throw new Error('Illegal move: larger disk on smaller');
+  $('status').textContent = `Move ${moveCount + 1}: disk ${k} from ${NAMES[m.from]} to ${NAMES[m.to]}`;
+  updateStats();
+  place(k, m.from, LIFT); await sleep(t); if (id !== runId) return false;
+  place(k, m.to, LIFT);   await sleep(t); if (id !== runId) return false;
+  place(k, m.to, BASE + towers[m.to].length * DH); await sleep(t); if (id !== runId) return false;
+  towers[m.to].push(k);                                             // PUSH
+  moveCount++; updateStats();
+  return true;
+}
+
+async function start() {
+  if (running) return;
+  if (moveCount) init();                    // restart from a clean state if a run already finished
+  running = true; const id = ++runId; setUI();
+  $('status').textContent = 'Running the C solver...';
+  let moves;
+  try { moves = await fetchMoves(n); }
+  catch (e) {
+    if (id !== runId) return;
+    running = false; setUI();
+    $('status').textContent = 'Could not load the C (WebAssembly) module. Make sure hanoi.js and hanoi.wasm are next to this page.';
+    return;
+  }
+  if (id !== runId) return;                 // Reset was pressed while waiting
+  for (const m of moves) if (!(await play(m, id))) return;
+  running = false; setUI();
+  $('status').textContent = 'Solved!';
+  $('doneMsg').textContent = `${n} disks moved to peg C in ${moveCount} moves. The optimal count is 2^${n} − 1 = ${2 ** n - 1}.`;
+  $('done').showModal();
+}
+
+function reset() {
+  runId++; running = false;                 // invalidates any animation in flight
+  $('done').close(); init(); setUI();
+}
+
+/* ---------- Wiring ---------- */
+for (let i = 3; i <= 8; i++) countSel.add(new Option(i + ' disks', i, false, i === 4));
+countSel.onchange = () => { if (!running) init(); };
+$('start').onclick = start;
+$('reset').onclick = reset;
+$('close').onclick = () => $('done').close();
+$('again').onclick = () => { reset(); start(); };
+addEventListener('resize', () => { DH = innerWidth < 520 ? 22 : 26; instantLayout(); });
+init(); setUI();
+</script>
+</body>
+</html>
